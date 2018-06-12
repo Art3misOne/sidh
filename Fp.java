@@ -11,6 +11,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.lang.System;
 import java.lang.Math;
+  import java.security.SecureRandom;
 
 class InvalidFieldException extends Exception {
 }
@@ -22,13 +23,13 @@ class Felm {
   // Set p to a placeholder value until the prime has been set
   public static BigInteger p = BigInteger.valueOf(2);
   private BigInteger value;
-  public static int primesize = 1;    // number of bytes needed to represent the prime
+  public static int primesize = 1;           // bytes needed to represent the prime
 
-  // Constants of the class
+  // Frequently used constants
   public static final Felm ZERO = new Felm (BigInteger.ZERO);
   public static final Felm ONE = new Felm (BigInteger.ONE);
-
-
+  
+    
   public Felm (BigInteger v) {
     value = v.mod(p);
   }
@@ -39,10 +40,20 @@ class Felm {
   }
 
 
+  public Felm (long v) {
+    value = BigInteger.valueOf(v).mod(p);
+  }
+    
+
   public Felm (byte[] bytes) {
     value = new BigInteger (bytes);
   }
 
+
+  public Felm (SecureRandom rnd) {
+    value = genRandom (p);
+  }
+    
 
   public static void setPrime (BigInteger pr) throws InvalidFieldException {
     if (pr.isProbablePrime(10))
@@ -64,13 +75,29 @@ class Felm {
   }
 
 
+  public static BigInteger genRandom (BigInteger bound) {
+    // Gen random values up to the same bit length as the bound until the value generated is
+    // strictly less than the bound. Average expected number of calls is less than 2.
+    
+    SecureRandom rnd = new SecureRandom();
+    int numBits = bound.bitLength();
+    
+    BigInteger randval = new BigInteger (numBits, rnd);
+        
+    while (randval.compareTo(bound) >= 0)
+        randval = new BigInteger (numBits, rnd);
+
+    return randval;
+  }
+
+    
   public Felm fpAdd (Felm y) {
     return new Felm (value.add (y.value));
   }
 
 
   public Felm fpSub (Felm y) {
-    return fpAdd (y.fpNegate());             // this - y = this + (-y)
+    return fpAdd (y.fpNegate());             
   }
 
 
@@ -85,13 +112,13 @@ class Felm {
 
 
   public boolean fpIsZero() {
-    return value.equals(BigInteger.ZERO);
+    return value.equals (BigInteger.ZERO);
   }
 
 
   public boolean fpIsEven() {
-    BigInteger c = value.and(BigInteger.ONE);
-    return c.equals(BigInteger.ZERO);
+    BigInteger c = value.and (BigInteger.ONE);
+    return c.equals (BigInteger.ZERO);
   }
 
 
@@ -125,17 +152,31 @@ class Felm {
   }
 
 
-  public Felm fpDiv2() {
+  public Felm fpDiv2 () {
     BigInteger v = value;
 
     if (fpIsOdd()) 
       v = v.add(p);                          // If this is odd, adding p makes it even
-      v = v.shiftRight(1);                   // Divide by two = right shift by one
+    v = v.shiftRight(1);                     // Divide by two = right shift by one
 
-      return new Felm (v);
+    return new Felm (v);
   }
 
 
+  public Felm fpLeftShift (int shiftBy) {
+    BigInteger v = value;
+    v = v.shiftLeft (shiftBy);
+    return new Felm (v);
+  }
+
+
+  public Felm fpRightShift (int shiftBy) {
+    BigInteger v = value;
+    v = v.shiftRight (shiftBy);
+    return new Felm (v);
+  }
+    
+    
   public Felm fpSwap (Felm y, BigInteger option) {
     // Constant time swap regardless of whether option is 0 or 1
     BigInteger temp, mask, yval;
@@ -152,6 +193,117 @@ class Felm {
   } 
 
 
+  public Felm fpSqrt () {
+    // Compute square root using Tonelli-Shanks algorithm
+    Felm c, z, t, r, b, tsq;
+    BigInteger q, exp, exp2;
+    int s, m, i;
+
+    if (value.equals (BigInteger.ZERO))
+      return Felm.ZERO;
+    
+    if (isQuadraticResidue() == false)
+      return null;
+
+    q = p.subtract (BigInteger.ONE);
+    s = numPowersOf2 (q);                              // s = number of times 2 divides (p-1)
+    q = q.shiftRight (s);                              // q = (p-1) / (2^s)
+
+    z = quadraticNonResidue ();
+
+    exp = q.add (BigInteger.ONE);
+    exp = exp.shiftRight (1);                          // exp = (q+1)/2
+    
+    m = s;
+    c = z.fpPow (q);                                   // c = z^q
+    t = fpPow (q);                                     // t = value^q
+    r = fpPow (exp);                                   // r = value^((q+1)/2)
+
+    while (t.fpEquals (Felm.ONE) == false) {
+      i = t.findLog2Order ();
+      
+      exp = BigInteger.ONE.shiftLeft (m-i-1);          // exp = 2^(m-i-1)
+      b = c.fpPow (exp);                               // b = c^(2^(m-i-1))
+      
+      m = i;
+      c = b.fpSqr ();                                  // c = b^2
+      t = t.fpMult (c);                                // t = t*b^2
+      r = r.fpMult (b);                                // r = r*b
+    }
+
+    return r;
+  }
+
+
+  private boolean isQuadraticResidue () {
+    Felm c;
+    BigInteger d;
+
+    d = p.subtract (BigInteger.ONE);
+    d = d.shiftRight (1);
+    c = fpPow (d);
+
+    if (c.fpEquals (Felm.ONE))
+      return true;
+    return false;
+  }
+    
+
+  private int numPowersOf2 (BigInteger n) {
+    BigInteger q = n;
+    int s = 0;
+    
+    while (q.testBit(0) == false) {                    // while q is even
+      s = s + 1;                                       
+      q = q.shiftRight (1);                            // q = q/2
+    }
+
+    return s;
+  }
+
+
+  private Felm quadraticNonResidue () {
+    Felm z;
+    SecureRandom rnd = new SecureRandom ();
+
+    do {
+      z = new Felm (rnd);                              // z <- random
+    } while (z.fpEquals (Felm.ZERO) || z.isQuadraticResidue ());
+
+    return z;
+  }
+
+
+  private int findLog2Order () {
+    Felm tsq;
+    int i = 0;
+
+    tsq = new Felm (this);
+    while (tsq.fpEquals (Felm.ONE) == false) {
+      i = i + 1;
+      tsq = tsq.fpSqr ();
+    }
+
+    return i;
+  }
+    
+
+  public Felm fpPow (BigInteger exp) {
+    Felm result = Felm.ONE;
+    Felm base = new Felm (this);
+    BigInteger e = exp;
+
+    while (e.compareTo (BigInteger.ZERO) == 1) {
+      if (e.testBit (0) == true)
+	result = result.fpMult (base);
+      e = e.shiftRight (1);
+      base = base.fpSqr ();
+    }
+
+    return result;
+  }
+
+    
   public String toString() {
     return value.toString();
   }
@@ -194,16 +346,22 @@ class F2elm {
 
 
   public F2elm (Felm a0, Felm a1) {
-    x0 = a0;
-    x1 = a1;
+    x0 = new Felm (a0);
+    x1 = new Felm (a1);
   }
 
 
   public F2elm (F2elm a) {
-    x0 = a.x0;
-    x1 = a.x1;
+    x0 = new Felm (a.x0);
+    x1 = new Felm (a.x1);
   }
 
+
+  public F2elm (long v0, long v1) {
+    x0 = new Felm (v0);
+    x1 = new Felm (v1);
+  }
+    
 
   public F2elm (byte[] bytes) {
     int len = (bytes.length) / 2;
@@ -211,6 +369,12 @@ class F2elm {
     x1 = new Felm (Arrays.copyOfRange (bytes, len, 2*len));
   }
 
+
+  public F2elm (SecureRandom rnd) {
+    x0 = new Felm (rnd);
+    x1 = new Felm (rnd);
+  }
+    
 
   public Felm f2Get0() {
     return x0;
@@ -252,7 +416,7 @@ class F2elm {
   }
 
 
-  public F2elm f2Sqr() {
+  public F2elm f2Sqr () {
     // Compute c = this * this = (x0 + i*x1)^2 = x0^2 - x1^2 + i*2x0x1
     Felm t1, t2, t3, c0, c1;
 
@@ -264,7 +428,7 @@ class F2elm {
 
     return new F2elm (c0, c1);
   }
-
+    
 
   public F2elm f2Mult (F2elm y) {
     // compute c = this * y = (x0 + i*x1) * (y0 + i*y1) = x0y0 - x1y1 + i*(x0y1 + x1y0)
@@ -289,12 +453,17 @@ class F2elm {
   }
 
 
-  public boolean f2IsEven() {
+  public F2elm f2MultByi () {
+    return new F2elm (x1.fpNegate(), x0);
+  }
+    
+
+  public boolean f2IsEven () {
     return x0.fpIsEven() && x1.fpIsEven();
   }
 
 
-  public F2elm f2Div2() {
+  public F2elm f2Div2 () {
     Felm c0, c1;
 
     c0 = x0.fpDiv2();
@@ -304,7 +473,103 @@ class F2elm {
   }
 
 
-  public F2elm f2Inverse() {
+  public F2elm f2Sqrt () {
+    BigInteger pmod4, three;
+    
+    if (this.f2Equals (F2elm.ZERO))
+      return F2elm.ZERO;
+
+    if (this.isQuadraticResidue () == false)
+      return null;
+
+    three = BigInteger.valueOf (3);
+    pmod4 = Felm.getPrime ().and (three);
+    
+    if (pmod4.equals (three))
+      return f2Sqrt3Mod4 ();
+    else
+      return f2Sqrt1Mod4 ();
+  }
+
+
+  private F2elm f2Sqrt3Mod4 () {
+    F2elm a1, a2, alpha, b, neg1;
+    BigInteger d, exp;
+
+    neg1 = F2elm.ONE.f2Negate();
+
+    d = Felm.getPrime().shiftRight (2);    // d = floor (p/4) = (p-3)/4
+    a1 = f2Pow (d);                        // a1 = x^d = (x0,x1)^d
+    a2 = f2Mult (a1);                      // a2 = x*a1 = x^(d+1) = x^((p+1)/4)
+    alpha = a1.f2Mult (a2);                // alpha = a1*a2 = x^(2d+1) = x^((p-1)/2)
+
+    if (alpha.f2Equals (neg1))
+      return a2.f2MultByi ();              // return a2*i = x^(d+1) * i
+
+    exp = Felm.getPrime ().shiftRight (1); // exp = (p-1)/2
+    b = alpha.f2Add (F2elm.ONE);           // b = alpha + 1
+    b = b.f2Pow (exp);                     // b = b^exp
+    return b.f2Mult (a2);                  // return b * a2
+  }
+
+
+  private F2elm f2Sqrt1Mod4 () {
+    F2elm a;
+    Felm a0, a1;
+
+    a0 = x0.fpSqr ();                      // a0 = x0^2 
+    a1 = x1.fpSqr ();                      // a1 = x1^2
+    a1 = a0.fpAdd (a1);                    // a1 = x0^2 + x1^2
+    a1 = a1.fpSqrt ();                     // a1 = (x0^2 + x1^2)^(1/2)
+    a1 = a1.fpSub (x0);                    // a1 = -x0 + (x0^2 + x1^2)^(1/2)
+
+    if (a1.fpEquals (Felm.ZERO))
+      return new F2elm (x0.fpSqrt (), Felm.ZERO);
+
+    a1 = a1.fpDiv2 ();                     // a1 = [-x0 + (x0^2 + x1^2)^(1/2)] / 2
+    a1 = a1.fpSqrt ();                     // a1 = ([-x0 + (x0^2 + x1^2)^(1/2)] / 2) ^ (1/2)
+    
+    a0 = a1.fpLeftShift (1);               // a0 = 2*a1
+    a0 = a0.fpInverse ();                  // a0 = 1/(2*a1)
+    a0 = x1.fpMult (a0);                   // a0 = x1 / (2*a1)
+    
+    return new F2elm (a0, a1);
+  }
+   
+
+  private boolean isQuadraticResidue () {
+    F2elm c;
+    BigInteger d;
+
+    d = Felm.getPrime ();
+    d = d.multiply (d);
+    d = d.subtract (BigInteger.ONE);
+    d = d.shiftRight (1);                  // d = (p^2 - 1) / 2
+    c = f2Pow (d);
+
+    if (c.f2Equals (F2elm.ONE))
+      return true;
+    return false;
+  }
+    
+    
+  public F2elm f2Pow (BigInteger exp) {
+    F2elm result = F2elm.ONE;
+    F2elm base = new F2elm (this);
+    BigInteger e = exp;
+
+    while (e.compareTo (BigInteger.ZERO) == 1) {
+      if (e.testBit (0) == true)
+	result = result.f2Mult (base);
+      e = e.shiftRight (1);
+      base = base.f2Sqr ();
+    }
+
+    return result;
+  }
+
+    
+  public F2elm f2Inverse () {
     // Compute inverse c = (x0 - x1*i) / (x0^2 + x1^2)
     Felm t0, t1, c0, c1;
 

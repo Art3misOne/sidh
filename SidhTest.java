@@ -3,27 +3,61 @@ package sidh;
 
 /**************************************************************************************************
  *
- * Basic tests for supersingular isogeny Diffie-Hellman key exchange and underlying field and curve
- * arithmetic.
+ * Basic tests for supersingular isogeny Diffie-Hellman key exchange and validation.
  *  
  **************************************************************************************************/
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.security.SecureRandom;
+
 
 class SidhTest {
   public static boolean testrandom = true;
 
   public static void main (String[] args) {
-    // Using default parameters
-    SidhKeyExchange kex = new SidhKeyExchange();
+    // Arithmetic tests
+    F2elm a, asq, asqsqrt, asq2;
+    Felm a0;
+    BigInteger p, dandr[];
+    SecureRandom rnd = new SecureRandom();
 
+    for (int i = 0; i < 100; i++) {
+      p = new BigInteger (100, 10, rnd);
+	
+      try {
+	Felm.setPrime(p);
+      } catch (InvalidFieldException e) {
+	System.exit(-1);
+      }
+
+      a = new F2elm (rnd);
+
+      asq = a.f2Sqr ();                // asq constructed to be a quadratic residue
+      asqsqrt = asq.f2Sqrt ();
+      asq2 = asqsqrt.f2Sqr ();         // sqrt (a^2) might yield a diff residue than a
+
+      if (asq2.f2Equals (asq) == false) {
+        System.out.println ("Square root test iteration " + i + ": ");
+	System.out.println ("a = " + a + "\t\t asq = " + asq);
+	System.out.println ("asqsqrt = " + asqsqrt + "\t asq2 = " + asq2 + "\n");
+	break;
+      }
+    }
+    
+    // Using default parameters
+    SidhKeyExchange kex = new SidhKeyExchange();          
     SidhKeyPair keysA, keysB;
     SidhPublicKey tempkey;
     byte[] sharedA, sharedB;
 
+    Felm fortyseven = new Felm (47);
+    Felm fiftytwo = new Felm (52);
+    Felm four = new Felm (4);
+
+
     if (testrandom) {  
-      System.out.println ("\nTesting key exchange/validation with randomly generated private keys\n");
+      System.out.println ("\nTesting exchange/validation with randomly generated private keys\n");
 
       keysA = kex.generateKeyPair (SidhKeyExchange.PARTYA);
 

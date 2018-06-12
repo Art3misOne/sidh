@@ -114,7 +114,7 @@ class SidhKeyExchange {
 
     BigInteger pAx, pAy, pBx, pBy;
 
-    isogenyId = "Sidhp751";
+    isogenyId = "sidhp751";
 
     f = 1;
     lA = 2;
@@ -124,7 +124,7 @@ class SidhKeyExchange {
 
     obits = 384;                             // Smallest multiple of 32 greater than order length
 
-    // prime = f*(lA^eA)*(lB^eB)
+    // prime = f*(lA^eA)*(lB^eB) - 1
     prime = new BigInteger("6fe5d541f71c0e12909f97badc668562b5045cb25748084e9867d6ebe876da9" +
                            "59b1a13f7cc76e3ec968549f878a8eeafffffffffffffffffffffffffffffffff" +
                            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16);

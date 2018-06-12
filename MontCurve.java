@@ -117,9 +117,10 @@ class FpPointAffine {
 
 
 class F2Point {
-  /* Points with coordinates in Fp^2 in projective coordinates */
+  /* Points with coordinates in Fp^2 using (x,y,z) coordinates */
 
   private final F2elm x;
+  private F2elm y;
   private final F2elm z;
 
   public static final F2Point INFINITY = new F2Point (F2elm.ONE, F2elm.ZERO);
@@ -127,18 +128,28 @@ class F2Point {
 
   public F2Point (F2elm xc, F2elm zc) {
     x = xc;
+    y = F2elm.ZERO;
     z = zc;
   }
 
 
+  public F2Point (F2elm xc, F2elm yc, F2elm zc) {
+    x = xc;
+    y = yc;
+    z = zc;
+  }
+    
+
   public F2Point (Felm x0, Felm x1, Felm z0, Felm z1) {
     x = new F2elm (x0, x1);
+    y = F2elm.ZERO;
     z = new F2elm (z0, z1);
   }
 
     
   public F2Point (F2Point p) {
     x = p.x;
+    y = p.y;
     z = p.z;
   }
 
@@ -148,6 +159,11 @@ class F2Point {
   }
 
 
+  public F2elm getY() {
+    return y;
+  }
+    
+
   public F2elm getZ() {
     return z;
   }
@@ -155,18 +171,36 @@ class F2Point {
 
   public F2Point swapPoints (F2Point q, BigInteger option) {
     // If option = 0 then this <- this and q <- q, else this <- q and q <- this
-    F2elm qx, qz;
+    F2elm qx, qy, qz;
 
     qx = x.f2Swap(q.x, option);
+    qy = y.f2Swap(q.y, option);
     qz = z.f2Swap(q.z, option);
 
     return new F2Point (qx, qz);
   }
 
 
+  public void recoverYcoord (F2elm a) {
+    F2elm t0, t1;
+
+    t0 = z.f2Sqr ();
+    y = a.f2Mult (z);
+    y = y.f2Add (x);
+    y = y.f2Mult (x);
+    y = y.f2Add (t0);
+    y = y.f2Mult (x);
+    t0 = t0.f2Mult (z);
+    t1 = t0.f2Inverse ();
+    t1 = t0.f2Mult (y);
+    t1 = t1.f2Sqrt ();
+    y = t1.f2Mult (z);
+  }
+    
+
   public String toString() {
     return x.f2Mult(z.f2Inverse()).toString();
-    //return "(" + x + ", " + z + ")";
+    //return "(" + x + ", " + y + ", " + z + ")";
   }
 }
 
@@ -174,7 +208,7 @@ class F2Point {
 class MontCurve {
   /* 
    * Montgomery curves are of the form By^2 = Cx^3 + Ax^2 + Cx (using projective coefficients). 
-   * Our computations do no require the parameter B, but it has been left in for completeness. 
+   * Our computations do not require the parameter B, but it has been left in for completeness. 
    */
 
   protected F2elm a;
@@ -227,7 +261,7 @@ class MontCurve {
 
   public void updateA24C24() {
     if (a.f2IsEven()) {
-      a24 = c.f2Add (a.f2Div2());           // a24 = c + a/2
+      a24 = c.f2Add (a.f2Div2());            // a24 = c + a/2
       c24 = c.f2Add (c);                     // c24 = 2c
     }
     else {
@@ -254,9 +288,9 @@ class MontCurve {
   }
 
 
-  public static F2Point distortAndDiff (Felm px) {
-    // Compute projective coordinates of difference point Q-P where Q = tau(P).
-    // Inputs: px, the x-coordinate of an affine point
+  public static F2Point fpDistortAndDiff (Felm px) {
+    // Compute projective coordinates of Q-P where Q = tau(P).
+    // Inputs: px, the x-coordinate (in Fp) of an affine point P
     // Outputs: projective coordinates (xd, zd) of Q-P 
 
     Felm xd1, zd0;
@@ -268,6 +302,22 @@ class MontCurve {
     return new F2Point (Felm.ZERO, xd1, zd0, Felm.ZERO);
   }
 
+
+  public static F2Point f2DistortAndDiff (F2elm px) {
+    // Compute projective coordinates of Q-P where Q = tau(P).
+    // Inputs: px, the x-coordinate (in Fp2) of an affine point P
+    // Outputs: projective coordinates (xd, zd) of Q-P 
+
+    F2elm dx, dz;
+    
+    dx = px.f2Sqr ();                           // dx = px^2        
+    dx = dx.f2Add (F2elm.ONE);                  // dx = px^2 + 1
+    dz = px.f2Add (px);                         // dz = px + px
+    dx = new F2elm (dx.f2Get1(), dx.f2Get0());  // (dx0, dx1) = (dx1, dx0)
+    
+    return new F2Point (dx, dz);
+  }
+    
 
   public FpPointProjective[] xDblAddBasefield (FpPointProjective p, FpPointProjective q, Felm xpq) {
     // Double and add in the base field. 
@@ -614,8 +664,8 @@ class MontCurve {
 
     return jinv;
   }
-
-
+  
+  
   public String toString() {
     return b + " y^2 = " + c + " x^3 + " + a + " x^2 + " + c + " x   where (a24/c24) = (" + a24 + "/" + ")";
   }

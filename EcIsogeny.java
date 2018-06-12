@@ -55,13 +55,12 @@ class FourIsogeny extends MontCurve {
 
     px = p.getX();
     pz = p.getZ();
-    
+
     t0 = F2elm.ONE;
-    t0 = t0.f2Add(t0);                   // t0 = 2
+    t0 = t0.f2Add(t0);
     c = a.f2Sub(t0);                     // c = a - 2
 
-    // t0 = 6
-    t0 = new F2elm(BigInteger.valueOf(6), BigInteger.ZERO);    
+    t0 = new F2elm (6, 0);    
     a = a.f2Add(t0);                     // a = a + 6
     a = a.f2Add(a);                      // a = 2*a + 12
     t1 = px.f2Add(pz);                   // t1 = px + pz
