@@ -16,22 +16,20 @@ class SidhKeyPair {
   private final SidhPrivateKey privKey;
 
 
-  public SidhKeyPair (int aOrB, BigInteger prKey, SidhKeyExchange kex) {
-    // Create a key-pair where the private key = prKey
+  public SidhKeyPair (int aOrB, SidhPrivateKey prKey, SidhKeyExchange kex) {
     privKey = new SidhPrivateKey (prKey);
     pubKey = new SidhPublicKey (aOrB, privKey, kex);
   }
 
 
   public SidhKeyPair (int aOrB, SidhKeyExchange kex) {
-    // Create a key-pair where the private key is generated randomly
     BigInteger order;
 
     if (aOrB == SidhKeyExchange.PARTYA)
-      order = kex.getOrderA();
+      order = kex.getOrderA ();
     else
-      order = kex.getOrderB();
-
+      order = kex.getOrderB ();
+    
     privKey = new SidhPrivateKey (aOrB, order);
     pubKey = new SidhPublicKey (aOrB, privKey, kex);
   }

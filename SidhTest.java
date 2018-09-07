@@ -10,96 +10,48 @@ package sidh;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.security.SecureRandom;
-
+import java.lang.management.*;
 
 class SidhTest {
-  public static boolean testrandom = true;
+  public static boolean testfixed = true;
 
   public static void main (String[] args) {
-    // Arithmetic tests
-    F2elm a, asq, asqsqrt, asq2;
-    Felm a0;
-    BigInteger p, dandr[];
-    SecureRandom rnd = new SecureRandom();
-
-    for (int i = 0; i < 100; i++) {
-      p = new BigInteger (100, 10, rnd);
-	
-      try {
-	Felm.setPrime(p);
-      } catch (InvalidFieldException e) {
-	System.exit(-1);
-      }
-
-      a = new F2elm (rnd);
-
-      asq = a.f2Sqr ();                // asq constructed to be a quadratic residue
-      asqsqrt = asq.f2Sqrt ();
-      asq2 = asqsqrt.f2Sqr ();         // sqrt (a^2) might yield a diff residue than a
-
-      if (asq2.f2Equals (asq) == false) {
-        System.out.println ("Square root test iteration " + i + ": ");
-	System.out.println ("a = " + a + "\t\t asq = " + asq);
-	System.out.println ("asqsqrt = " + asqsqrt + "\t asq2 = " + asq2 + "\n");
-	break;
-      }
-    }
-    
     // Using default parameters
-    SidhKeyExchange kex = new SidhKeyExchange();          
+    SidhKeyExchange kex = new SidhKeyExchange("sidhP503");
     SidhKeyPair keysA, keysB;
-    SidhPublicKey tempkey;
-    byte[] sharedA, sharedB;
+    SidhPublicKey reconstructedApub, publicB;
+    SidhPrivateKey reconstructedApriv, privateB;
+    byte[] sharedA, sharedB, pubKeyBytes, privKeyBytes;
+    
+    long startTime, startTime2, endTime, totalTime = 0;
+    int i, iterations = 10;
+    BigInteger akey, bkey;
+    
+    // Testing key exchange
+    
+    if (testfixed) {
+      akey = new BigInteger ("2b701ec1698bf9a513875fb7188c1d63fbd59ac8a378c3fbb1c98496173f6e", 16);
+      bkey = new BigInteger ("9cfe2a283dfb23c330fb2202dd2c34f8a0c45f2ab761ec7ca4bc11a3324d5c7", 16);
+      
+      keysA = kex.generateKeyPair (SidhKeyExchange.PARTYA, new SidhPrivateKey (akey));
+      keysB = kex.generateKeyPair (SidhKeyExchange.PARTYB, new SidhPrivateKey (bkey));
 
-    Felm fortyseven = new Felm (47);
-    Felm fiftytwo = new Felm (52);
-    Felm four = new Felm (4);
+      pubKeyBytes = keysA.getPublicKey().serialize();
+      privKeyBytes = keysA.getPrivateKey().serialize();
 
+      reconstructedApub = new SidhPublicKey (pubKeyBytes);
+      reconstructedApriv = new SidhPrivateKey (privKeyBytes);
 
-    if (testrandom) {  
-      System.out.println ("\nTesting exchange/validation with randomly generated private keys\n");
-
-      keysA = kex.generateKeyPair (SidhKeyExchange.PARTYA);
-
-      //System.out.println ("A's Keys:");
-      //System.out.println ("\tPrivate: " + keysA.getPrivateKey().getKey());
-      //tempkey = keysA.getPublicKey();
-      //System.out.println ("\tPublic: " + tempkey.getA());
-      //System.out.println ("\t        " + tempkey.getP());
-      //System.out.println ("\t        " + tempkey.getQ());
-      //System.out.println ("\t        " + tempkey.getD() + "\n");
-
-      int eA = kex.geteA(), eB = kex.geteB();
-
-      SidhKeyValidate validator = new SidhKeyValidate (keysA.getPublicKey());
-      if (validator.validateAsKey (eA, eB))
-        System.out.println ("\nA's public key is valid");
-      else 
-        System.out.println ("\nA's public key is not valid :(");
-
-      keysB = kex.generateKeyPair (SidhKeyExchange.PARTYB);
-
-      //System.out.println ("B's Keys (original, then serialized and reconstructed):");
-      //System.out.println ("\tPrivate: " + keysB.getPrivateKey().getKey());
-      //SidhPrivateKey reconstruct = new SidhPrivateKey (keysB.getPrivateKey().serialize());
-      //System.out.println ("\tReconst: " + reconstruct.getKey() + "\n");
-      //tempkey = keysB.getPublicKey();
-      //System.out.println ("\tPublic: " + tempkey.getA());
-      //System.out.println ("\t        " + tempkey.getP());
-      //System.out.println ("\t        " + tempkey.getQ());
-      //System.out.println ("\t        " + tempkey.getD() + "\n");
-      //tempkey = new SidhPublicKey (tempkey.serialize());
-      //System.out.println ("\tRecon:  " + tempkey.getA());
-      //System.out.println ("\t        " + tempkey.getP());
-      //System.out.println ("\t        " + tempkey.getQ());
-      //System.out.println ("\t        " + tempkey.getD());
-
-      validator = new SidhKeyValidate (keysB.getPublicKey());
-      if (validator.validateBsKey (eA, eB))
-        System.out.println ("B's public key is valid\n");
+      if (reconstructedApub.publicKeyEquals (keysA.getPublicKey()))
+        System.out.println ("Public key reconstruction successful");
       else
-	System.out.println ("B's public key is not valid\n");
+        System.out.println ("Public key reconstruction unsuccessful");
 
+      if (reconstructedApriv.privateKeyEquals (keysA.getPrivateKey()))
+        System.out.println ("Private key reconstruction successful\n");
+      else
+        System.out.println ("Private key reconstruction unsuccessful\n");      
+      
       sharedA = kex.calculateAgreementA (keysA.getPrivateKey(), keysB.getPublicKey());
       sharedB = kex.calculateAgreementB (keysB.getPrivateKey(), keysA.getPublicKey());
 
@@ -117,11 +69,76 @@ class SidhTest {
         System.out.println ("\n");
       }
     }
-  }
 
+    if (iterations > 0) {
+      long mintime = 10000000;
+      long maxtime = 0;
+      long thistime;
+      
+      System.out.println ("\nRunning timing tests\n");
+
+      keysB = kex.generateKeyPair (SidhKeyExchange.PARTYB);
+      publicB = keysB.getPublicKey ();
+      privateB = keysB.getPrivateKey ();
+      
+      for (i = 0; i < iterations; i++) {
+	startTime = getCpuTime ();
+	  
+	keysA = kex.generateKeyPair (SidhKeyExchange.PARTYA);
+	sharedA = kex.calculateAgreementA (keysA.getPrivateKey(), publicB);
+	sharedB = kex.calculateAgreementB (privateB, keysA.getPublicKey());
+
+	if (Arrays.equals (sharedA, sharedB) == false) {
+	    System.out.println ("Failed exchange at iteration " + i + "\n");
+	    break;
+	}
+	
+	endTime = getCpuTime();
+	thistime = (endTime - startTime) / 1000;  // convert nanoseconds to microseconds
+	totalTime += thistime;
+	if (thistime > maxtime)
+	    maxtime = thistime;
+	if (thistime < mintime)
+	    mintime = thistime;
+      }
+
+      System.out.println ("\nCPU time for " + iterations + " iterations: " + totalTime + " microseconds");
+      System.out.println ("Average = " + (totalTime / iterations) + " microseconds per iteration");
+      System.out.println ("Max = " + maxtime + " microseconds");
+      System.out.println ("Min = " + mintime + " microseconds");
+    }
+  }
+  
   public static void printByteArray (byte[] in) {
     System.out.print ("0x");
-    for (int i = 0; i < in.length; i++)
-      System.out.printf ("%02x ", in[i]);
+    for (int i = 0; i < in.length; i = i+2)
+      System.out.printf ("%02x%02x ", in[i], in[i+1]);
+  }
+
+
+  public static long getCpuTime () {
+  // Get CPU Time in nanoseconds
+
+    ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+    return bean.isCurrentThreadCpuTimeSupported()?
+      bean.getCurrentThreadCpuTime(): 0L;
+  }
+
+
+  public static long getUserTime () {
+  // Get User Time in nanoseconds
+
+    ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+    return bean.isCurrentThreadCpuTimeSupported()?
+      bean.getCurrentThreadUserTime(): 0L;
+  }
+
+
+  public static long getSystemTime () {
+  // Get System Time in nanoseconds
+
+    ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+    return bean.isCurrentThreadCpuTimeSupported()?
+      (bean.getCurrentThreadCpuTime() - bean.getCurrentThreadUserTime()): 0L;
   }
 }
