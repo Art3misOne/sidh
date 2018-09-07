@@ -23,9 +23,8 @@ class Felm {
   // Set p to a placeholder value until the prime has been set
   public static BigInteger p = BigInteger.valueOf(2);
   private BigInteger value;
-  public static int primesize = 1;           // bytes needed to represent the prime
+  public static int primesize = 1;
 
-  // Frequently used constants
   public static final Felm ZERO = new Felm (BigInteger.ZERO);
   public static final Felm ONE = new Felm (BigInteger.ONE);
   
@@ -90,26 +89,60 @@ class Felm {
     return randval;
   }
 
+
+  public void randomize () {
+    value = genRandom (p);
+  }
     
-  public Felm fpAdd (Felm y) {
-    return new Felm (value.add (y.value));
+    
+  public static Felm add (Felm x, Felm y) {
+    Felm z = new Felm (x);
+    z.fpAddInPlace (y);
+    return z;
   }
 
 
-  public Felm fpSub (Felm y) {
-    return fpAdd (y.fpNegate());             
+  public void fpAddInPlace (Felm y) {
+    value = value.add (y.value);
+    value = value.mod (p);
   }
 
 
-  public Felm fpMult (Felm y) {
-    return new Felm (value.multiply (y.value));
+  public static Felm sub (Felm x, Felm y) {
+    Felm z = new Felm (x);
+    z.fpSubInPlace (y);
+    return z;
+  }
+
+    
+  public void fpSubInPlace (Felm y) {
+    value = value.add (p).subtract (y.value);
+    value = value.mod (p);
   }
 
 
-  public Felm fpSqr() {
-    return fpMult(this);
+  public static Felm mult (Felm x, Felm y) {
+    Felm z = new Felm (x);
+    z.fpMultInPlace (y);
+    return z;
   }
 
+
+  public void fpMultInPlace (Felm y) {
+    value = value.multiply (y.value);
+    value = value.mod (p);
+  }
+
+    
+  public static Felm sqr (Felm x) {
+    return mult (x, x);
+  }
+
+
+  public void fpSqrInPlace () {
+    fpMultInPlace (this);
+  }
+    
 
   public boolean fpIsZero() {
     return value.equals (BigInteger.ZERO);
@@ -142,41 +175,66 @@ class Felm {
   }
 
 
-  public Felm fpNegate() {
-    return new Felm (p.subtract(value));
+  public static Felm negate (Felm x) {
+    return new Felm (p.subtract (x.value));
   }
 
 
-  public Felm fpInverse() {
-    return new Felm (value.modInverse(p));
-  }
-
-
-  public Felm fpDiv2 () {
-    BigInteger v = value;
-
-    if (fpIsOdd()) 
-      v = v.add(p);                          // If this is odd, adding p makes it even
-    v = v.shiftRight(1);                     // Divide by two = right shift by one
-
-    return new Felm (v);
-  }
-
-
-  public Felm fpLeftShift (int shiftBy) {
-    BigInteger v = value;
-    v = v.shiftLeft (shiftBy);
-    return new Felm (v);
-  }
-
-
-  public Felm fpRightShift (int shiftBy) {
-    BigInteger v = value;
-    v = v.shiftRight (shiftBy);
-    return new Felm (v);
+  public void fpNegateInPlace () {
+    value = p.subtract (value);
   }
     
+
+  public static Felm inverse (Felm x) {
+    Felm z = new Felm (x);
+    z.fpInverseInPlace ();
+    return z;
+  }
+
+
+  public void fpInverseInPlace () {
+    value = value.modInverse (p);
+  }
     
+
+  public static Felm div2 (Felm x) {
+    Felm z = new Felm (x);
+    z.fpDiv2InPlace ();
+    return z;
+  }
+
+
+  public void fpDiv2InPlace () {
+    if (fpIsOdd ())
+      value = value.add (p);
+    value = value.shiftRight (1);    
+  }
+
+
+  public static Felm leftShift (Felm x, int shiftBy) {
+    Felm z = new Felm (x);
+    z.fpLeftShiftInPlace (shiftBy);
+    return z;
+  }
+
+
+  public void fpLeftShiftInPlace (int shiftBy) {
+    value = value.shiftLeft (shiftBy);
+  }
+    
+
+  public static Felm rightShift (Felm x, int shiftBy) {
+    Felm z = new Felm (x);
+    z.fpRightShiftInPlace (shiftBy);
+    return z;
+  }
+
+
+  public void fpRightShiftInPlace (int shiftBy) {
+    value = value.shiftRight (shiftBy);
+  }
+    
+
   public Felm fpSwap (Felm y, BigInteger option) {
     // Constant time swap regardless of whether option is 0 or 1
     BigInteger temp, mask, yval;
@@ -191,136 +249,21 @@ class Felm {
 
     return new Felm (yval);
   } 
-
-
-  public Felm fpSqrt () {
-    // Compute square root using Tonelli-Shanks algorithm
-    Felm c, z, t, r, b, tsq;
-    BigInteger q, exp, exp2;
-    int s, m, i;
-
-    if (value.equals (BigInteger.ZERO))
-      return Felm.ZERO;
-    
-    if (isQuadraticResidue() == false)
-      return null;
-
-    q = p.subtract (BigInteger.ONE);
-    s = numPowersOf2 (q);                              // s = number of times 2 divides (p-1)
-    q = q.shiftRight (s);                              // q = (p-1) / (2^s)
-
-    z = quadraticNonResidue ();
-
-    exp = q.add (BigInteger.ONE);
-    exp = exp.shiftRight (1);                          // exp = (q+1)/2
-    
-    m = s;
-    c = z.fpPow (q);                                   // c = z^q
-    t = fpPow (q);                                     // t = value^q
-    r = fpPow (exp);                                   // r = value^((q+1)/2)
-
-    while (t.fpEquals (Felm.ONE) == false) {
-      i = t.findLog2Order ();
-      
-      exp = BigInteger.ONE.shiftLeft (m-i-1);          // exp = 2^(m-i-1)
-      b = c.fpPow (exp);                               // b = c^(2^(m-i-1))
-      
-      m = i;
-      c = b.fpSqr ();                                  // c = b^2
-      t = t.fpMult (c);                                // t = t*b^2
-      r = r.fpMult (b);                                // r = r*b
-    }
-
-    return r;
-  }
-
-
-  private boolean isQuadraticResidue () {
-    Felm c;
-    BigInteger d;
-
-    d = p.subtract (BigInteger.ONE);
-    d = d.shiftRight (1);
-    c = fpPow (d);
-
-    if (c.fpEquals (Felm.ONE))
-      return true;
-    return false;
-  }
     
 
-  private int numPowersOf2 (BigInteger n) {
-    BigInteger q = n;
-    int s = 0;
-    
-    while (q.testBit(0) == false) {                    // while q is even
-      s = s + 1;                                       
-      q = q.shiftRight (1);                            // q = q/2
-    }
-
-    return s;
-  }
-
-
-  private Felm quadraticNonResidue () {
-    Felm z;
-    SecureRandom rnd = new SecureRandom ();
-
-    do {
-      z = new Felm (rnd);                              // z <- random
-    } while (z.fpEquals (Felm.ZERO) || z.isQuadraticResidue ());
-
-    return z;
-  }
-
-
-  private int findLog2Order () {
-    Felm tsq;
-    int i = 0;
-
-    tsq = new Felm (this);
-    while (tsq.fpEquals (Felm.ONE) == false) {
-      i = i + 1;
-      tsq = tsq.fpSqr ();
-    }
-
-    return i;
-  }
-    
-
-  public Felm fpPow (BigInteger exp) {
-    Felm result = Felm.ONE;
-    Felm base = new Felm (this);
-    BigInteger e = exp;
-
-    while (e.compareTo (BigInteger.ZERO) == 1) {
-      if (e.testBit (0) == true)
-	result = result.fpMult (base);
-      e = e.shiftRight (1);
-      base = base.fpSqr ();
-    }
-
-    return result;
-  }
-
-    
   public String toString() {
-    return value.toString();
+    return "0x" + value.toString(16);
   }
 
 
-  // Creates a byte[] representation of the field element. Returns the same size array regardless
-  // of the element so each one is the same number of bytes as needed to represent the prime.
   public byte[] toByteArray() {
+    // Returns the same size array regardless of the value. Zero pad the highbits.
     byte[] retval = new byte[primesize];
     Arrays.fill (retval, (byte) 0);                    
 
     int eltsize = (value.bitLength() / 8) + 1; 
     int offset = primesize - eltsize;
 
-    // The return array was filled with zeros so copy from offset to the end of the element. This
-    // way the zero padding is at the beginning and not the end since adding zeros to the end of a
-    // binary representation of a number multiplies the number by a power of 2.
     System.arraycopy (value.toByteArray(), 0, retval, offset, eltsize);
 
     return retval;
@@ -331,10 +274,9 @@ class Felm {
 class F2elm {
   /* Elements of the quadratic extension field GF(p^2): x0 + x1*i */
 
-  private final Felm x0;
-  private final Felm x1;
+  private Felm x0;
+  private Felm x1;
 
-  // Constants of the class
   public static final F2elm ZERO = new F2elm (Felm.ZERO, Felm.ZERO);
   public static final F2elm ONE = new F2elm (Felm.ONE, Felm.ZERO);
 
@@ -391,71 +333,116 @@ class F2elm {
   }
 
 
-  public F2elm f2Add (F2elm y) {
-    Felm newx0, newx1;
-
-    newx0 = x0.fpAdd(y.x0);
-    newx1 = x1.fpAdd(y.x1);
-
-    return new F2elm (newx0, newx1);
+  public static F2elm add (F2elm x, F2elm y) {
+    F2elm z = new F2elm (x);
+    z.f2AddInPlace (y);
+    return z;
   }
 
 
-  public F2elm f2Sub (F2elm y) {
-    Felm newx0, newx1;
+  public void f2AddInPlace (F2elm y) {
+    x0.fpAddInPlace (y.x0);
+    x1.fpAddInPlace (y.x1);
+  }
 
-    newx0 = x0.fpSub(y.x0);
-    newx1 = x1.fpSub(y.x1);
-
-    return new F2elm (newx0, newx1);
+    
+  public static F2elm sub (F2elm x, F2elm y) {
+    F2elm z = new F2elm (x);
+    z.f2SubInPlace (y);
+    return z;
   }
 
 
-  public F2elm f2Negate() {
-    return new F2elm (x0.fpNegate(), x1.fpNegate());
+  public void f2SubInPlace (F2elm y) {
+    x0.fpSubInPlace (y.x0);
+    x1.fpSubInPlace (y.x1);
+  }
+
+    
+  public static F2elm negate (F2elm x) {
+    F2elm y = new F2elm (x);
+    y.f2NegateInPlace ();
+    return y;
   }
 
 
-  public F2elm f2Sqr () {
-    // Compute c = this * this = (x0 + i*x1)^2 = x0^2 - x1^2 + i*2x0x1
-    Felm t1, t2, t3, c0, c1;
-
-    t1 = x0.fpAdd(x1);                       // t1 = x0 + x1
-    t2 = x0.fpSub(x1);                       // t2 = x0 - x1
-    t3 = x0.fpAdd(x0);                       // t3 = 2 * x0
-    c0 = t1.fpMult(t2);                      // c0 = (x0+x1)(x0-x1)
-    c1 = t3.fpMult(x1);                      // c1 = 2*x0*x1
-
-    return new F2elm (c0, c1);
+  public void f2NegateInPlace () {
+    x0.fpNegateInPlace ();
+    x1.fpNegateInPlace ();
   }
     
 
-  public F2elm f2Mult (F2elm y) {
+  public static F2elm sqr (F2elm x) {
+    F2elm y = new F2elm (x);
+    y.f2SqrInPlace ();
+    return y;
+  }
+
+
+  public void f2SqrInPlace () {
+    Felm t1, t2, t3;
+
+    t1 = Felm.add (x0, x1);                       // t1 = x0 + x1
+    t2 = Felm.sub (x0, x1);                       // t2 = x0 - x1
+    t3 = Felm.leftShift (x0, 1);                  // t3 = 2 * x0
+
+    x0 = Felm.mult (t1, t2);                      // x0 = (x0+x1)(x0-x1)
+    x1.fpMultInPlace (t3);                        // x1 = 2*x0*x1
+  }
+    
+
+  public static F2elm mult (F2elm y, F2elm z) {
+    F2elm x = new F2elm (y);
+    x.f2MultInPlace (z);
+    return x;
+  }
+
+
+  public void f2MultInPlace (F2elm y) {
     // compute c = this * y = (x0 + i*x1) * (y0 + i*y1) = x0y0 - x1y1 + i*(x0y1 + x1y0)
     Felm t1, t2, c0, c1, y0, y1;
 
     y0 = y.x0;
     y1 = y.x1;
-
-    t1 = x0.fpMult(y0);                      // t1 = x0 * y0
-    t2 = x1.fpMult(y1);                      // t2 = x1 * y1
-    c0 = t1.fpSub(t2);                       // c0 = (x0*y0) - (x1*y1))
+    
+    t1 = Felm.mult (x0, y0);                      
+    t2 = Felm.mult (x1, y1);                      
+    c0 = Felm.sub (t1, t2);                       
 
     // Using extra additions, but fewer multiplications
-    t1 = t1.fpAdd(t2);                       // t1 = (x0*y0) + (x1*y1)
-    t2 = x0.fpAdd(x1);                       // t2 = x0 + x1
-    c1 = y0.fpAdd(y1);                       // c1 = y0 + y1
-    c1 = t2.fpMult(c1);                      // c1 = (x0+x1)(y0+y1)
-    c1 = c1.fpSub(t1);                       // c1 = (x0+x1)(y0+y1) - x0*y0 - x1*y1
-                                             //      = (x0*y1) + (x1*y0)
+    t1.fpAddInPlace (t2);
+    t2 = Felm.add (x0, x1);
+    x1 = Felm.add (y0, y1);
+    x1.fpMultInPlace (t2);
+    x1.fpSubInPlace (t1);
+    x0 = c0;
+  }
+    
 
-    return new F2elm (c0, c1);
+  public static F2elm rightShift (F2elm y, int n) {
+    F2elm x = new F2elm (y);
+    x.f2RightShiftInPlace (n);
+    return x;
   }
 
 
-  public F2elm f2MultByi () {
-    return new F2elm (x1.fpNegate(), x0);
+  public void f2RightShiftInPlace (int n) {
+    x0.fpRightShiftInPlace (n);
+    x1.fpRightShiftInPlace (n);
   }
+    
+
+  public static F2elm leftShift (F2elm y, int n) {
+    F2elm x = new F2elm (y);
+    x.f2LeftShiftInPlace (n);
+    return x;
+  }
+
+
+  public void f2LeftShiftInPlace (int n) {
+    x0.fpLeftShiftInPlace (n);
+    x1.fpLeftShiftInPlace (n);
+  } 
     
 
   public boolean f2IsEven () {
@@ -463,144 +450,71 @@ class F2elm {
   }
 
 
-  public F2elm f2Div2 () {
-    Felm c0, c1;
-
-    c0 = x0.fpDiv2();
-    c1 = x1.fpDiv2();
-
-    return new F2elm (c0, c1);
+  public static F2elm div2 (F2elm y) {
+    F2elm x = new F2elm (y);
+    x.f2Div2InPlace ();
+    return x;
   }
 
 
-  public F2elm f2Sqrt () {
-    BigInteger pmod4, three;
+  public void f2Div2InPlace () {
+    x0.fpDiv2InPlace ();
+    x1.fpDiv2InPlace ();
+  }
     
-    if (this.f2Equals (F2elm.ZERO))
-      return F2elm.ZERO;
 
-    if (this.isQuadraticResidue () == false)
-      return null;
-
-    three = BigInteger.valueOf (3);
-    pmod4 = Felm.getPrime ().and (three);
-    
-    if (pmod4.equals (three))
-      return f2Sqrt3Mod4 ();
-    else
-      return f2Sqrt1Mod4 ();
+  public static F2elm inverse (F2elm y) {
+    F2elm x = new F2elm (y);
+    x.f2InverseInPlace ();
+    return x;
   }
 
 
-  private F2elm f2Sqrt3Mod4 () {
-    F2elm a1, a2, alpha, b, neg1;
-    BigInteger d, exp;
+  public void f2InverseInPlace () {
+    Felm t0, t1;
 
-    neg1 = F2elm.ONE.f2Negate();
-
-    d = Felm.getPrime().shiftRight (2);    // d = floor (p/4) = (p-3)/4
-    a1 = f2Pow (d);                        // a1 = x^d = (x0,x1)^d
-    a2 = f2Mult (a1);                      // a2 = x*a1 = x^(d+1) = x^((p+1)/4)
-    alpha = a1.f2Mult (a2);                // alpha = a1*a2 = x^(2d+1) = x^((p-1)/2)
-
-    if (alpha.f2Equals (neg1))
-      return a2.f2MultByi ();              // return a2*i = x^(d+1) * i
-
-    exp = Felm.getPrime ().shiftRight (1); // exp = (p-1)/2
-    b = alpha.f2Add (F2elm.ONE);           // b = alpha + 1
-    b = b.f2Pow (exp);                     // b = b^exp
-    return b.f2Mult (a2);                  // return b * a2
-  }
-
-
-  private F2elm f2Sqrt1Mod4 () {
-    F2elm a;
-    Felm a0, a1;
-
-    a0 = x0.fpSqr ();                      // a0 = x0^2 
-    a1 = x1.fpSqr ();                      // a1 = x1^2
-    a1 = a0.fpAdd (a1);                    // a1 = x0^2 + x1^2
-    a1 = a1.fpSqrt ();                     // a1 = (x0^2 + x1^2)^(1/2)
-    a1 = a1.fpSub (x0);                    // a1 = -x0 + (x0^2 + x1^2)^(1/2)
-
-    if (a1.fpEquals (Felm.ZERO))
-      return new F2elm (x0.fpSqrt (), Felm.ZERO);
-
-    a1 = a1.fpDiv2 ();                     // a1 = [-x0 + (x0^2 + x1^2)^(1/2)] / 2
-    a1 = a1.fpSqrt ();                     // a1 = ([-x0 + (x0^2 + x1^2)^(1/2)] / 2) ^ (1/2)
-    
-    a0 = a1.fpLeftShift (1);               // a0 = 2*a1
-    a0 = a0.fpInverse ();                  // a0 = 1/(2*a1)
-    a0 = x1.fpMult (a0);                   // a0 = x1 / (2*a1)
-    
-    return new F2elm (a0, a1);
-  }
-   
-
-  private boolean isQuadraticResidue () {
-    F2elm c;
-    BigInteger d;
-
-    d = Felm.getPrime ();
-    d = d.multiply (d);
-    d = d.subtract (BigInteger.ONE);
-    d = d.shiftRight (1);                  // d = (p^2 - 1) / 2
-    c = f2Pow (d);
-
-    if (c.f2Equals (F2elm.ONE))
-      return true;
-    return false;
+    t0 = Felm.sqr (x0);
+    t1 = Felm.sqr (x1);
+    t0.fpAddInPlace (t1);
+    t0.fpInverseInPlace ();
+    x1.fpNegateInPlace ();
+    x0.fpMultInPlace (t0);
+    x1.fpMultInPlace (t0);
   }
     
-    
-  public F2elm f2Pow (BigInteger exp) {
-    F2elm result = F2elm.ONE;
-    F2elm base = new F2elm (this);
-    BigInteger e = exp;
 
-    while (e.compareTo (BigInteger.ZERO) == 1) {
-      if (e.testBit (0) == true)
-	result = result.f2Mult (base);
-      e = e.shiftRight (1);
-      base = base.f2Sqr ();
-    }
+  public static F2elm[] inv3Way (F2elm z0, F2elm z1, F2elm z2) {
+    // Compute simultaneous inversion of 3 elements
 
-    return result;
+    F2elm t0, res[] = new F2elm[3];
+
+    t0 = mult (z0, z1);                    // t0 = z0*z1 
+    res[1] = mult (t0, z2);                // res1 = z0*z1*z2
+    res[2] = inverse (res[1]);             // res2 = 1/(z0*z1*z2)
+    res[1] = mult (res[2], z2);            // res1 = 1/(z0*z1)
+    res[0] = mult (res[1], z1);            // res0 = 1/z0
+    res[1].f2MultInPlace (z0);             // res1 = 1/z1
+    res[2].f2MultInPlace (t0);             // res2 = 1/z2
+
+    return res;
   }
-
     
-  public F2elm f2Inverse () {
-    // Compute inverse c = (x0 - x1*i) / (x0^2 + x1^2)
-    Felm t0, t1, c0, c1;
-
-    t0 = x0.fpSqr();                        // t0 = x0^2
-    t1 = x1.fpSqr();                        // t1 = x1^2
-    t0 = t0.fpAdd(t1);                      // t0 = x0^2 + x1^2
-    t0 = t0.fpInverse();                    // t0 = 1 / (x0^2 + x1^2)
-    t1 = x1.fpNegate();                     // t1 = -x1
-
-    c0 = t0.fpMult(x0);                     // c0 = x0 / (x0^2 + x1^2)
-    c1 = t1.fpMult(t0);                     // c1 = -x1 / (x0^2 + x1^2)
-
-    return new F2elm (c0, c1);
-  }
-
 
   public static F2elm[] inv4Way (F2elm z0, F2elm z1, F2elm z2, F2elm z3) {
-    // Computes simultaneous inversion of 4 elements
+    // Compute simultaneous inversion of 4 elements
     
     F2elm res[] = new F2elm[4];
     
-    res[0] = z0.f2Mult(z1);                 // res0 = z0*z1
-    res[1] = z2.f2Mult(z3);                 // res1 = z2*z3
-    res[2] = res[0].f2Mult(res[1]);         // res2 = z0*z1*z2*z3
-    res[3] = res[2].f2Inverse();            // res3 = 1/(z0*z1*z2*z3)
-    res[2] = res[1].f2Mult(res[3]);         // res2 = 1/(z2*z3)
-    res[3] = res[0].f2Mult(res[3]);         // res3 = 1/(z0*z1)
-    res[0] = res[2].f2Mult(z1);             // res0 = 1/z0
-    res[1] = res[2].f2Mult(z0);             // res1 = 1/z1
-    res[2] = res[3].f2Mult(z3);             // res2 = 1/z2
-    res[3] = res[3].f2Mult(z2);             // res3 = 1/z3
+    res[0] = mult(z0, z1);                 // res0 = z0*z1
+    res[1] = mult(z2, z3);                 // res1 = z2*z3
+    res[2] = mult(res[0], res[1]);         // res2 = z0*z1*z2*z3
+    res[3] = inverse(res[2]);              // res3 = 1/(z0*z1*z2*z3)
+    res[2] = mult(res[1], res[3]);         // res2 = 1/(z2*z3)
+    res[3].f2MultInPlace(res[0]);          // res3 = 1/(z0*z1)
+    res[0] = mult(res[2], z1);             // res0 = 1/z0
+    res[1] = mult(res[2], z0);             // res1 = 1/z1
+    res[2] = mult(res[3], z3);             // res2 = 1/z2
+    res[3].f2MultInPlace(z2);              // res3 = 1/z3
 
     return res;
   }
@@ -614,32 +528,32 @@ class F2elm {
     y1 = x1.fpSwap(y.x1, option);
 
     return new F2elm (y0, y1);
-  }
+  }    
 
 
-  public F2elm f2Select (F2elm y, BigInteger option) {
-    // Return this if option = 0 and y if option = 1
+  public static F2elm select (F2elm x, F2elm y, BigInteger option) {
+    // Return x if option = 0 and y if option = 1
     BigInteger y0, y1, z0, z1, mask, bix0, bix1;
 
-    mask = option.negate();                 // if option = 1 then mask = 1...1 because BigInteger
+    mask = option.negate ();                // if option = 1 then mask = 1...1 because BigInteger
                                             // automatically sign extends as necessary
 
     // Get x0, x1, y0, y1 as their BigInteger representations
-    y0 = (y.x0).fpGetValue();
-    y1 = (y.x1).fpGetValue();
-    bix0 = x0.fpGetValue();                 
-    bix1 = x1.fpGetValue();                 
+    y0 = (y.x0).fpGetValue ();
+    y1 = (y.x1).fpGetValue ();
+    bix0 = (x.x0).fpGetValue ();                 
+    bix1 = (x.x1).fpGetValue ();                 
 
-    z0 = bix0.xor(y0);                      // z0 = x0 xor y0
-    z1 = bix1.xor(y1);                      // z1 = x1 xor y1
+    z0 = bix0.xor (y0);                     // z0 = x0 xor y0
+    z1 = bix1.xor (y1);                     // z1 = x1 xor y1
 
-    z0 = z0.and(mask);                      // if mask = 0 then z0 = 0 else z0 = x0 xor y0 
-    z1 = z1.and(mask);                      // if mask = 0 then z1 = 0 else z1 = x1 xor y1 
+    z0 = z0.and (mask);                     // if mask = 0 then z0 = 0 else z0 = x0 xor y0 
+    z1 = z1.and (mask);                     // if mask = 0 then z1 = 0 else z1 = x1 xor y1 
 
-    z0 = bix0.xor(z0);                      // if mask = 0 then z0 = x0 
+    z0 = bix0.xor (z0);                     // if mask = 0 then z0 = x0 
                                             // else z0 = x0 xor x0 xor y0 = y0
 
-    z1 = bix1.xor(z1);                      // if mask = 0 then z1 = x1 
+    z1 = bix1.xor (z1);                     // if mask = 0 then z1 = x1 
                                             // else z1 = x1 xor x1 xor y1 = y1
 
     return new F2elm (z0, z1);
@@ -647,7 +561,8 @@ class F2elm {
 
 
   public String toString() {
-    return x1 + "*i + " + x0;
+    return "[" + x0 + "," + x1 + "]";
+    //return x1 + "*i + " + x0;
   }
 
 

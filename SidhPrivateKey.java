@@ -20,6 +20,11 @@ class SidhPrivateKey {
   }
 
 
+  public SidhPrivateKey (SidhPrivateKey kIn) {
+    m = kIn.getKey ();
+  }
+
+
   public SidhPrivateKey (byte[] bytesIn) {
     m = new BigInteger (bytesIn);
   }
@@ -56,6 +61,11 @@ class SidhPrivateKey {
     return m;
   }    
 
+
+  public boolean privateKeyEquals (SidhPrivateKey otherKey) {
+    return m.compareTo (otherKey.getKey ()) == 0;
+  }
+    
 
   public byte[] serialize() {
     return m.toByteArray();
