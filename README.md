@@ -6,9 +6,8 @@ De Feo, Luca; Jao, David; Plut, Jerome. "Towards quantum-resistant cryptosystems
 This implementation is largely a Java translation of Microsoft's C implementation of SIDH except that the Java implementation is
 object oriented. Their paper and code can be accessed using the following links:
 
-https://eprint.iacr.org/2016/413
-
-https://github.com/Microsoft/PQCrypto-SIDH
+1. https://eprint.iacr.org/2016/413
+2. https://github.com/Microsoft/PQCrypto-SIDH
 
 The latest update to this code incorporates the optimizations in version 3 of Microsoft's code and includes the additional 
 parameter set using a 503 bit prime.
