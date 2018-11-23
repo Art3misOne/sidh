@@ -14,6 +14,11 @@ package sidh;
 import java.math.BigInteger;
 import java.lang.System;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+
 class SidhKeyExchange {
   public static int PARTYA = 0;
   public static int PARTYB = 1;  
@@ -340,7 +345,7 @@ class SidhKeyExchange {
     F2Point r, pts[];
     F2elm aB, pkB0, pkB1, pkB2, two;
     FourIsogeny fourIsog;
-    
+
     pkB0 = new F2elm (pubKeyB.getP ());
     pkB1 = new F2elm (pubKeyB.getQ ());
     pkB2 = new F2elm (pubKeyB.getD ());
@@ -430,5 +435,29 @@ class SidhKeyExchange {
     threeIsog.updateAC (3);
 
     return threeIsog.jInv().toByteArray();
+  }
+
+    
+  public static void writeKeyToFile (String filename, SidhPublicKey PubKey) {
+    OutputStream fStream = null;
+
+    try {
+      byte[] keyBytes = PubKey.serialize();
+      File fh = new File (filename);
+      if (!fh.exists()) {
+	fh.createNewFile ();
+      }
+      
+      fStream = new FileOutputStream (fh);
+      fStream.write (keyBytes);
+      fStream.flush();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      try {
+	if (fStream != null) fStream.close();
+      } catch (IOException e) {
+      }
+    }
   }
 }
