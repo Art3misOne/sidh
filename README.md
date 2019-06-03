@@ -9,8 +9,9 @@ object oriented. Their paper and code can be accessed using the following links:
 1. https://eprint.iacr.org/2016/413
 2. https://github.com/Microsoft/PQCrypto-SIDH
 
-The latest update to this code incorporates the optimizations in version 3 of Microsoft's code and includes the additional 
-parameter set using a 503 bit prime.
+This implementation includes the parameter sets corresponding to the 434 bit prime (added in round 2 of the NIST competition), 
+the 503 bit prime (currently the default option), and the 751 bit prime. Larger primes are more conservative from a security
+perspective, but the smaller primes yield better performance.
 
 In implementations of classical key exchanges, there is typically one function for key generation and one function for key 
 agreement. This implementation requires separate versions for Alice and Bob because the two sides of the exchange are different.
