@@ -89,11 +89,11 @@ class MontCurve {
 
   // Useful precomputed values:
 
-  protected F2elm a24minus;
-  protected F2elm a24plus;
+  protected F2elm aMinus2c;
+  protected F2elm aPlus2c;
 
   protected F2elm a24;              
-  protected F2elm c24;              
+  protected F2elm c4;              
         
 
   public MontCurve() {
@@ -111,58 +111,71 @@ class MontCurve {
   }
 
 
-  public MontCurve (F2elm aA, F2elm bB, F2elm cC) {
-    a = aA;
-    c = cC;
-  }
-
-
   public MontCurve (MontCurve curveIn) {
     a = new F2elm (curveIn.a);
     c = new F2elm (curveIn.c);
   }
 
 
+  public void initializeConstants () {
+    updateA24();
+    updateC4();
+    updatePlusMinus();  
+  }
+
+    
   public void updateA24 () {
     a24 = F2elm.leftShift (F2elm.ONE, 1);
     a24.f2AddInPlace (a);
     a24.f2Div2InPlace ();
     a24.f2Div2InPlace ();
   }
+
+
+  public void updateC4 () {
+    c4 = F2elm.leftShift (c, 2);
+  }
+
+
+  public void updatePlusMinus () {
+    F2elm c2 = F2elm.leftShift (c, 1);
+    aPlus2c = F2elm.add (a, c2);
+    aMinus2c = F2elm.sub (a, c2);
+  }
     
 
   public void updateAC (int order) {
     if (order == 3) {
-      a = F2elm.add (a24plus, a24minus);
+      a = F2elm.add (aPlus2c, aMinus2c);
       a.f2LeftShiftInPlace (1);
-      c = F2elm.sub (a24plus, a24minus);
+      c = F2elm.sub (aPlus2c, aMinus2c);
     }
 
     else {
-      c = F2elm.div2 (c24);
-      a = F2elm.sub (a24plus, c);
+      c = F2elm.div2 (c4);
+      a = F2elm.sub (aPlus2c, c);
       c.f2Div2InPlace ();
     }
   }
 
 
-  public F2elm getA24plus () {
-    return a24plus;
+  public F2elm getAPlus2c () {
+    return aPlus2c;
   }
 
     
-  public void setA24plus (F2elm invalue) {
-    a24plus = invalue;
+  public void setAPlus2c (F2elm invalue) {
+    aPlus2c = invalue;
   }
 
 
-  public void setA24minus (F2elm invalue) {
-    a24minus = invalue;
+  public void setAMinus2c (F2elm invalue) {
+    aMinus2c = invalue;
   }
 
 
-  public void setC24 (F2elm invalue) {
-    c24 = invalue;
+  public void setC4 (F2elm invalue) {
+    c4 = invalue;
   }
 
 
@@ -196,10 +209,10 @@ class MontCurve {
     t1 = F2elm.add (px, pz);
     t0.f2SqrInPlace ();
     t1.f2SqrInPlace ();
-    qz = F2elm.mult (c24, t0);
+    qz = F2elm.mult (c4, t0);
     qx = F2elm.mult (t1, qz);
     t1.f2SubInPlace (t0);
-    t0 = F2elm.mult (a24plus, t1);
+    t0 = F2elm.mult (aPlus2c, t1);
     qz.f2AddInPlace (t0);
     qz.f2MultInPlace (t1);
 
@@ -239,9 +252,9 @@ class MontCurve {
     t1 = F2elm.sqr (t4);
     t1.f2SubInPlace (t3);
     t1.f2SubInPlace (t2);
-    t5 = F2elm.mult (t3, a24plus);
+    t5 = F2elm.mult (t3, aPlus2c);
     t3.f2MultInPlace (t5);
-    t6 = F2elm.mult (t2, a24minus);
+    t6 = F2elm.mult (t2, aMinus2c);
     t2.f2MultInPlace (t6);
     t3 = F2elm.sub (t2, t3);
     t2 = F2elm.sub (t5, t6);

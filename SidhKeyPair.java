@@ -11,7 +11,7 @@ package sidh;
 import java.math.BigInteger;
 import java.util.Arrays;
 
-class SidhKeyPair {
+public class SidhKeyPair {
   private final SidhPublicKey pubKey;
   private final SidhPrivateKey privKey;
 
@@ -25,7 +25,7 @@ class SidhKeyPair {
   public SidhKeyPair (int aOrB, SidhKeyExchange kex) {
     BigInteger order;
 
-    if (aOrB == SidhKeyExchange.PARTYA)
+    if (aOrB == SidhKeyExchange.ALICE)
       order = kex.getOrderA ();
     else
       order = kex.getOrderB ();

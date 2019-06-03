@@ -31,9 +31,9 @@ class FourIsogeny extends MontCurve {
     a = curve.a;
     c = curve.c;
     a24 = curve.a24;
-    c24 = curve.c24;
-    a24plus = curve.a24plus;
-    a24minus = curve.a24minus;
+    c4 = curve.c4;
+    aPlus2c = curve.aPlus2c;
+    aMinus2c = curve.aMinus2c;
   }
 
 
@@ -54,11 +54,11 @@ class FourIsogeny extends MontCurve {
     coeff[2] = F2elm.add (px, pz);
     coeff[0] = F2elm.sqr (pz);
     coeff[0].f2LeftShiftInPlace (1);
-    c24 = F2elm.sqr (coeff[0]);
+    c4 = F2elm.sqr (coeff[0]);
     coeff[0].f2LeftShiftInPlace (1);
-    a24plus = F2elm.sqr (px);
-    a24plus.f2LeftShiftInPlace (1);
-    a24plus.f2SqrInPlace ();
+    aPlus2c = F2elm.sqr (px);
+    aPlus2c.f2LeftShiftInPlace (1);
+    aPlus2c.f2SqrInPlace ();
   }
 
 
@@ -106,9 +106,9 @@ class ThreeIsogeny extends MontCurve {
     a = curve.a;
     c = curve.c;
     a24 = curve.a24;
-    c24 = curve.c24;
-    a24plus = curve.a24plus;
-    a24minus = curve.a24minus;
+    c4 = curve.c4;
+    aPlus2c = curve.aPlus2c;
+    aMinus2c = curve.aMinus2c;
   }
 
 
@@ -138,13 +138,13 @@ class ThreeIsogeny extends MontCurve {
     t4 = F2elm.add (t0, t3);
     t4.f2LeftShiftInPlace (1);
     t4.f2AddInPlace (t1);
-    a24minus = F2elm.mult (t2, t4);
+    aMinus2c = F2elm.mult (t2, t4);
     t4 = F2elm.add (t1, t2);
     t4.f2LeftShiftInPlace (1);
     t4.f2AddInPlace (t0);
     t4.f2MultInPlace (t3);
-    t0 = F2elm.sub (t4, a24minus);
-    a24plus = F2elm.add (t0, a24minus);
+    t0 = F2elm.sub (t4, aMinus2c);
+    aPlus2c = F2elm.add (t0, aMinus2c);
   }
 
 

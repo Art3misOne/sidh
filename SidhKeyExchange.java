@@ -19,9 +19,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-class SidhKeyExchange {
-  public static int PARTYA = 0;
-  public static int PARTYB = 1;  
+public class SidhKeyExchange {
+  public static int ALICE = 0;
+  public static int BOB = 1;  
 
   int f;
   int lA;
@@ -65,12 +65,100 @@ class SidhKeyExchange {
       setP751 ();
     else if (parameterID.equals ("sidhP503"))
       setP503 ();
+    else if (parameterID.equals ("sidhP434"))
+      setP434 ();
     else {
       System.out.println ("Unimplemented parameter set\n\n");
       System.exit(0);
     }
   }
 
+
+  public void setP434() {
+    // P434 parameters from SIKE NIST submission
+
+    BigInteger x0, x1;
+	
+    f = 1;
+    lA = 2;
+    lB = 3;
+    eA = 216;
+    eB = 137;
+
+    // prime = f*(lA^eA)*(lB^eB) - 1
+    prime = new BigInteger("0002341F271773446CFC5FD681C520567BC65C783158AEA3FDC1767AE2FFFFFF" +
+			    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16);
+
+    try {
+      Felm.setPrime (prime);
+    } catch (InvalidFieldException ex) {
+      System.out.println ("\nUnrecoverable error: Change in default parameters resulted in an " +
+                            "invalid field.\n");
+      System.exit (-99); 
+    }
+
+    orderA = new BigInteger("1000000000000000000000000000000000000000000000000000000", 16);
+    orderB = new BigInteger("2341F271773446CFC5FD681C520567BC65C783158AEA3FDC1767AE3", 16);
+
+    maxA = 108;
+    maxB = 137;
+
+    obitsA = 216;
+    obitsB = 218;
+
+    x0 = new BigInteger ("00003CCFC5E1F050030363E6920A0F7A4C6C71E63DE63A0E6475AF621995705F" +
+			 "7C84500CB2BB61E950E19EAB8661D25C4A50ED279646CB48", 16);
+    x1 = new BigInteger ("0001AD1C1CAE7840EDDA6D8A924520F60E573D3B9DFAC6D189941CB22326D284" +
+			 "A8816CC4249410FE80D68047D823C97D705246F869E3EA50", 16);
+    aGenPx = new F2elm (x0, x1);
+
+    x0 = new BigInteger ("0000C7461738340EFCF09CE388F666EB38F7F3AFD42DC0B664D9F461F31AA2ED" +
+			 "C6B4AB71BD42F4D7C058E13F64B237EF7DDD2ABC0DEB0C6C", 16);
+    x1 = new BigInteger ("000025DE37157F50D75D320DD0682AB4A67E471586FBC2D31AA32E6957FA2B26" +
+			 "14C4CD40A1E27283EAAF4272AE517847197432E2D61C85F5", 16);
+    aGenQx = new F2elm (x0, x1);
+
+    x0 = new BigInteger ("0000F37AB34BA0CEAD94F43CDC50DE06AD19C67CE4928346E829CB92580DA84D" +
+			 "7C36506A2516696BBE3AEB523AD7172A6D239513C5FD2516", 16);
+    x1 = new BigInteger ("000196CA2ED06A657E90A73543F3902C208F410895B49CF84CD89BE9ED6E4EE7" +
+			 "E8DF90B05F3FDB8BDFE489D1B3558E987013F9806036C5AC", 16);
+    aGenDx = new F2elm (x0, x1);
+
+    x0 = new BigInteger ("00008664865EA7D816F03B31E223C26D406A2C6CD0C3D667466056AAE85895EC" +
+			 "37368BFC009DFAFCB3D97E639F65E9E45F46573B0637B7A9", 16);
+    bGenPx = new F2elm (x0, BigInteger.ZERO);
+
+    x0 = new BigInteger ("00012E84D7652558E694BF84C1FBDAAF99B83B4266C32EC65B10457BCAF94C63" +
+			 "EB063681E8B1E7398C0B241C19B9665FDB9E1406DA3D3846", 16);
+    bGenQx = new F2elm (x0, BigInteger.ZERO);
+
+    x0 = new BigInteger ("0001CD28597256D4FFE7E002E87870752A8F8A64A1CC78B5A2122074783F51B4" +
+			 "FDE90E89C48ED91A8F4A0CCBACBFA7F51A89CE518A52B76C", 16);
+    x1 = new BigInteger ("000147073290D78DD0CC8420B1188187D1A49DBFA24F26AAD46B2D9BB547DBB6" +
+			 "F63A760ECB0C2B20BE52FB77BD2776C3D14BCBC404736AE4", 16);
+    bGenDx = new F2elm (x0, x1);
+    
+    maxIntPointsA = 7;
+    maxIntPointsB = 8;
+
+    splitsA = new int[] {
+      48, 28, 16, 8, 4, 2, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 8, 4, 2, 1, 1, 2, 1, 1, 4, 2,
+      1, 1, 2, 1, 1, 13, 7, 4, 2, 1, 1, 2, 1, 1, 3, 2, 1, 1, 1, 1, 5, 4, 2, 1, 1, 2, 1, 1, 2,
+      1, 1, 1, 21, 12, 7, 4, 2, 1, 1, 2, 1, 1, 3, 2, 1, 1, 1, 1, 5, 3, 2, 1, 1, 1, 1, 2, 1, 
+      1, 1, 9, 5, 3, 2, 1, 1, 1, 1, 2, 1, 1, 1, 4, 2, 1, 1, 1, 2, 1, 1 };
+      
+    splitsB = new int[] {
+      66, 33, 17, 9, 5, 3, 2, 1, 1, 1, 1, 2, 1, 1, 1, 4, 2, 1, 1, 1, 2, 1, 1, 8, 4, 2, 1, 1,
+      1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 16, 8, 4, 2, 1, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 8,
+      4, 2, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 32, 16, 8, 4, 3, 1, 1, 1, 1, 2, 1, 1, 4, 2, 1,
+      1, 2, 1, 1, 8, 4, 2, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1, 16, 8, 4, 2, 1, 1, 2, 1, 1, 4,
+      2, 1, 1, 2, 1, 1, 8, 4, 2, 1, 1, 2, 1, 1, 4, 2, 1, 1, 2, 1, 1 };
+
+    F2elm a = new F2elm (6, 0);
+    
+    baseCurve = new MontCurve(a, new F2elm (F2elm.ONE));
+  }
+    
 
   public void setP503() {
     // P503 parameters from SIKE NIST submission
@@ -84,8 +172,8 @@ class SidhKeyExchange {
     eB = 159;
 
     // prime = f*(lA^eA)*(lB^eB) - 1
-    prime = new BigInteger("004066F541811E1E6045C6BDDA77A4D01B9BF6C87B7E7DAF13085BDA2211E7A0A" +
-			   "BFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16);
+    prime = new BigInteger("004066F541811E1E6045C6BDDA77A4D01B9BF6C87B7E7DAF13085BDA2211E7A0" +
+			   "ABFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16);
 
     try {
       Felm.setPrime (prime);
@@ -355,8 +443,8 @@ class SidhKeyExchange {
     fourIsog = new FourIsogeny (aB);
     fourIsog.updateA24 ();
     two = F2elm.leftShift (F2elm.ONE, 1);              
-    fourIsog.setA24plus (F2elm.add (two, aB));         
-    fourIsog.setC24 (F2elm.leftShift (two, 1));        
+    fourIsog.setAPlus2c (F2elm.add (two, aB));         
+    fourIsog.setC4 (F2elm.leftShift (two, 1));        
     
     pts = new F2Point[maxIntPointsA];
     ptsIdx = new int[maxIntPointsA];
@@ -406,9 +494,7 @@ class SidhKeyExchange {
     
     threeIsog = new ThreeIsogeny (aA);
     threeIsog.updateA24 ();
-    temp = F2elm.leftShift (F2elm.ONE, 1);
-    threeIsog.setA24plus (F2elm.add (aA, temp));
-    threeIsog.setA24minus (F2elm.sub (aA, temp));
+    threeIsog.updatePlusMinus();
     
     r = threeIsog.ladder3pt(pkA0, pkA1, pkA2, privKeyB.getKey (), obitsB);
 

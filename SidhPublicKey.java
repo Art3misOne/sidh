@@ -9,14 +9,14 @@ package sidh;
 import java.math.BigInteger;
 import java.util.Arrays;
 
-class SidhPublicKey {
+public class SidhPublicKey {
   F2elm phiPx;
   F2elm phiQx;
   F2elm phiDx;
 
 
   public SidhPublicKey (int aOrB, SidhPrivateKey k, SidhKeyExchange params) {
-    if (aOrB == SidhKeyExchange.PARTYA) 
+    if (aOrB == SidhKeyExchange.ALICE) 
       genPubKeyA (k, params);
     else 
       genPubKeyB (k, params);
@@ -102,8 +102,8 @@ class SidhPublicKey {
     phiD = new F2Point (genB[2], F2elm.ONE);
     
     fourIsog = new FourIsogeny (curve);
-    fourIsog.setA24plus (new F2elm (F2elm.ONE));
-    fourIsog.setC24 (F2elm.leftShift (F2elm.ONE, 1));
+    fourIsog.updatePlusMinus();
+    fourIsog.updateC4 ();
 
     maxIntPointsA = params.getMIPA();
     maxA = params.getMaxA();
@@ -172,8 +172,7 @@ class SidhPublicKey {
     phiD = new F2Point (genA[2], F2elm.ONE);
     
     threeIsog = new ThreeIsogeny (curve);
-    threeIsog.setA24plus (F2elm.leftShift (F2elm.ONE, 1));
-    threeIsog.setA24minus (F2elm.negate (threeIsog.getA24plus()));
+    threeIsog.updatePlusMinus();
 
     maxIntPointsB = params.getMIPB();
     maxB = params.getMaxB();
@@ -215,5 +214,14 @@ class SidhPublicKey {
     phiPx = F2elm.mult (invs[0], phiP.getX());
     phiQx = F2elm.mult (invs[1], phiQ.getX());
     phiDx = F2elm.mult (invs[2], phiD.getX());
+  }
+
+
+  public String toString() {
+    String r;
+    r = "px = " + phiPx.toString() + "\n";
+    r += "qx = " + phiQx.toString() + "\n";
+    r += "dx = " + phiDx.toString() + "\n";
+    return r;
   }
 }

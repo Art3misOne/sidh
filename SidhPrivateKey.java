@@ -11,7 +11,7 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
-class SidhPrivateKey {
+public class SidhPrivateKey {
   private final BigInteger m;           
 
 
@@ -36,7 +36,7 @@ class SidhPrivateKey {
     boolean condition;
 
     temp = Felm.genRandom (order);
-    if (aOrB == SidhKeyExchange.PARTYA) 
+    if (aOrB == SidhKeyExchange.ALICE) 
       condition = temp.testBit(0);
     else { 
       randmod = temp.mod(three);
@@ -45,7 +45,7 @@ class SidhPrivateKey {
 
     while (temp.equals(BigInteger.ZERO) || condition) {
         temp = Felm.genRandom (order);
-        if (aOrB == SidhKeyExchange.PARTYA) 
+        if (aOrB == SidhKeyExchange.ALICE) 
           condition = temp.testBit(0);
         else { 
           randmod = temp.mod(three);
@@ -69,5 +69,10 @@ class SidhPrivateKey {
 
   public byte[] serialize() {
     return m.toByteArray();
+  }
+
+
+  public String toString() {
+    return m.toString();
   }
 }
